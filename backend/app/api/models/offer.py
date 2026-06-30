@@ -3,10 +3,11 @@ from pydantic import BaseModel
 
 
 class OfferModel(BaseModel):
-    id: int
-    request_id: int
-    mechanic_id: int
+    id: str
+    repair_request_id: str
+    mechanic_profile_id: str
     price: float
-    message: str
+    description: str
     status: str = "pending"
     created_at: datetime
+    updated_at: datetime

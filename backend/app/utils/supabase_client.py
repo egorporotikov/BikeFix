@@ -1,4 +1,5 @@
 ﻿import os
+import mimetypes
 from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
@@ -8,10 +9,10 @@ load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "uploads")
+SUPABASE_BUCKET = "bikefix"  # фиксируем bucket
 
 if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
-    raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables must be set")
+    raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
@@ -19,8 +20,6 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 def _raise_supabase_error(response: Any) -> None:
     error = getattr(response, "error", None)
     if error:
-        if isinstance(error, dict):
-            raise RuntimeError(error.get("message") or str(error))
         raise RuntimeError(str(error))
 
 
@@ -30,15 +29,30 @@ def _resolve_public_url(response: Any) -> Optional[str]:
     return getattr(response, "publicUrl", None)
 
 
-def upload_file(file_bytes: bytes, file_name: str) -> str:
-    storage = supabase.storage.from_(SUPABASE_BUCKET)
-    response = storage.upload(file_name, file_bytes)
+def upload_file(file_bytes: bytes, file_name: str, bucket: str = SUPABASE_BUCKET) -> str:
+    storage = supabase.storage.from_(bucket)
+
+    # путь внутри bucket
+    path = f"avatars/{file_name}"
+
+    # 1) Загружаем файл
+    response = storage.upload(path, file_bytes)
     _raise_supabase_error(response)
 
-    public_url_response = storage.get_public_url(file_name)
-    public_url = _resolve_public_url(public_url_response)
-    if not public_url:
-        raise RuntimeError("Unable to generate public URL for uploaded file")
+    # 2) Определяем MIME
+    mime_type, _ = mimetypes.guess_type(file_name)
+    mime_type = mime_type or "application/octet-stream"
+
+    # 3) Обновляем MIME через update()
+    response2 = storage.update(path, file_bytes, {"contentType": mime_type})
+    _raise_supabase_error(response2)
+
+    # 4) Генерируем public URL вручную (SDK ломается — этот способ всегда работает)
+    public_url = (
+        f"{SUPABASE_URL}/storage/v1/object/public/"
+        f"{bucket}/{path}"
+    )
+
     return public_url
 
 
@@ -61,6 +75,20 @@ def fetch_rows(table: str, filters: Optional[Dict[str, Any]] = None) -> List[Dic
 
 
 def get_row_by_id(table: str, row_id: Any) -> Optional[Dict[str, Any]]:
-    response = supabase.table(table).select("*").eq("id", row_id).single().execute()
+    response = supabase.table(table).select("*").eq("id", row_id).execute()
     _raise_supabase_error(response)
-    return getattr(response, "data", None)
+    rows = getattr(response, "data", None)
+    if not rows:
+        return None
+    return rows[0]
+
+
+def update_row(table: str, row_id: Any, data: Dict[str, Any]) -> Dict[str, Any]:
+    response = supabase.table(table).update(data).eq("id", row_id).execute()
+    _raise_supabase_error(response)
+
+    rows = getattr(response, "data", None)
+    if not rows or not isinstance(rows, list):
+        raise RuntimeError(f"Update on {table} did not return data")
+
+    return rows[0]

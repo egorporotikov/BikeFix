@@ -3,9 +3,9 @@ from pydantic import BaseModel
 
 
 class MessageModel(BaseModel):
-    id: int
-    request_id: int
-    sender_id: int
-    recipient_id: int
+    id: str
+    request_id: str
+    sender_profile_id: str
+    sender_role: str
     content: str
     created_at: datetime

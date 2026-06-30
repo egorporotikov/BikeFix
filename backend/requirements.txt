@@ -6,3 +6,8 @@ pydantic[email]
 sqlalchemy
 bcrypt
 python-dotenv
+PyJWT>=2.0.0
+cryptography>=3.4
+requests>=2.0.0
+python-jose[cryptography]
+python-multipart

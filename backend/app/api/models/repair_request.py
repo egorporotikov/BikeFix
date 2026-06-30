@@ -1,13 +1,17 @@
 ﻿from datetime import datetime
-from pydantic import BaseModel, HttpUrl
+from typing import Optional
+from pydantic import BaseModel
 
 
 class RepairRequestModel(BaseModel):
-    id: int
-    user_id: int | None = None
-    photo_url: HttpUrl
+    id: str
+    requester_profile_id: str
+    mechanic_profile_id: Optional[str] = None
+    title: str
     description: str
-    location: str
-    status: str = "open"
+    address: str
+    category: str
+    image_url: Optional[str] = None
+    status: str = "pending"
     created_at: datetime
     updated_at: datetime
