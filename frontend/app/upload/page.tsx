@@ -2,14 +2,16 @@
 
 import { useState } from "react";
 import { createRepairRequest, uploadPhoto } from "@/lib/api";
+import DashboardBackButton from "@/app/components/DashboardBackButton";
 
 export default function UploadPage() {
   const [photo, setPhoto] = useState<File | null>(null);
+  const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [location, setLocation] = useState("");
-  const [userId, setUserId] = useState(1);
+  const [address, setAddress] = useState("");
+  const [category, setCategory] = useState("flat tire");
   const [status, setStatus] = useState<string | null>(null);
-  const [requestId, setRequestId] = useState<number | null>(null);
+  const [requestId, setRequestId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -26,15 +28,18 @@ export default function UploadPage() {
     try {
       const uploadResult = await uploadPhoto(photo);
       const created = await createRepairRequest({
-        user_id: userId,
-        photo_url: uploadResult.url,
+        title,
         description,
-        location,
+        address,
+        category,
+        image_url: uploadResult.url,
       });
       setRequestId(created.id);
       setStatus("Repair request created successfully.");
+      setTitle("");
       setDescription("");
-      setLocation("");
+      setAddress("");
+      setCategory("flat tire");
       setPhoto(null);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to create request.");
@@ -45,6 +50,7 @@ export default function UploadPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
+      <DashboardBackButton className="mb-4" />
       <h1 className="text-3xl font-semibold text-slate-900">Upload a bike photo</h1>
       <p className="mt-2 text-slate-600">Upload a photo and create a repair request for your bike.</p>
 
@@ -71,25 +77,28 @@ export default function UploadPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700">Location</label>
+          <label className="block text-sm font-medium text-slate-700">Address</label>
           <input
             className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-sky-500 focus:outline-none"
             type="text"
-            value={location}
-            onChange={(event) => setLocation(event.target.value)}
+            value={address}
+            onChange={(event) => setAddress(event.target.value)}
             placeholder="Neighborhood or address"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700">Your user ID</label>
-          <input
+          <label className="block text-sm font-medium text-slate-700">Category</label>
+          <select
             className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-sky-500 focus:outline-none"
-            type="number"
-            min={1}
-            value={userId}
-            onChange={(event) => setUserId(Number(event.target.value))}
-          />
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+          >
+            <option value="flat tire">Flat tire</option>
+            <option value="brake issue">Brake issue</option>
+            <option value="chain problem">Chain problem</option>
+            <option value="other">Other</option>
+          </select>
         </div>
 
         <button
